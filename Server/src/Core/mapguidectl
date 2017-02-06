@@ -1,0 +1,81 @@
+#!/bin/sh
+# chkconfig: 345 35 65
+# description: MapGuide Server Daemon
+ 
+# MapGuide init script
+. /lib/lsb/init-functions
+ 
+# Defined here for distributions that don't define log_end_msg
+type log_end_msg > /dev/null 2>&1 || log_end_msg () {
+  retval=$1
+  if [ $retval -eq 0 ]; then
+    log_success_msg
+  else
+    log_failure_msg
+  fi
+  return $retval
+}
+
+progname="mgserver"
+fullprogname="mgserver daemon"
+
+do_start () {
+  echo -n "Starting MapGuide Server..."
+  pid=$(pgrep -f -u root "${fullprogname}")
+  ret=0
+  if [ -z "$pid" ]
+  then
+    cd /usr/local/mapguideopensource/server/bin && ./mgserverd.sh > /dev/null 
+    ret=$?
+  else
+    echo 
+    echo -n "MapGuide Server already running (pid $pid)"
+  fi
+  log_end_msg $ret
+}
+
+do_stop () {
+  echo -n "Stopping MapGuide Server"
+  pid=$(pgrep -f -u root "${fullprogname}")
+  ret=0
+  if [ -z "$pid" ]
+  then
+    echo 
+    echo -n "MapGuide Server not running"
+  else
+    /bin/kill $pid
+    ret=$?
+  fi
+  log_end_msg $ret
+}
+
+ 
+# Must be superuser
+if [ $(id -u) -ne 0 ]; then
+  log_failure_msg "You must have superuser privileges to run this script"
+  exit 1
+fi
+ 
+case "$1" in
+  start)
+    do_start
+    ;;
+  stop)
+    do_stop
+    ;;
+  status)
+    pid=$(pgrep -f -u root "${fullprogname}")
+    [ -z "$pid" ] && echo "$progname is stopped" && RETVAL=3 && exit $RETVAL
+    echo "$progname (pid $pid) is running..."
+    ;;
+  restart)
+    do_stop
+    sleep 2
+    do_start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|status|restart}"
+    exit 1
+    ;;
+esac
+exit 0
